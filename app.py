@@ -89,4 +89,9 @@ def predict():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Cloud platforms pass the port via an environment variable
+    port = int(os.environ.get("PORT", 5000))
+    
+    # host="0.0.0.0" allows the app to accept external requests
+    # debug should be False in production environments
+    app.run(host="0.0.0.0", port=port, debug=False)
