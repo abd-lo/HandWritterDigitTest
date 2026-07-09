@@ -2,173 +2,276 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Handwritten Digit Recognition</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwritten Digit Recognition</title>
 
-	<style>
-		body {
-			font-family: Arial, sans-serif;
-			background-color: #f4f6f9;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			min-height: 100vh;
-			margin: 0;
-		}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
 
-		.container {
-			background: white;
-			width: 400px;
-			padding: 30px;
-			border-radius: 12px;
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-			text-align: center;
-		}
+        .container {
+            background: white;
+            width: 400px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
 
-		h1 {
-			margin-top: 0;
-			color: #333;
-		}
+        h1 {
+            color: #333;
+        }
 
-		p {
-			color: #666;
-		}
+        p {
+            color: #666;
+        }
 
-		input[type="file"] {
-			margin: 20px 0;
-		}
+        input[type="file"] {
+            margin: 20px 0;
+        }
 
-		#preview {
-			width: 200px;
-			height: 200px;
-			object-fit: contain;
-			border: 2px dashed #ccc;
-			border-radius: 10px;
-			padding: 10px;
-			display: none;
-			margin-bottom: 20px;
-		}
+        #preview {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            margin-bottom: 20px;
+        }
 
-		button {
-			background-color: #2563eb;
-			color: white;
-			border: none;
-			padding: 12px 24px;
-			font-size: 16px;
-			border-radius: 8px;
-			cursor: pointer;
-		}
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
 
-		button:hover {
-			background-color: #1d4ed8;
-		}
+        button:hover {
+            background-color: #1d4ed8;
+        }
 
-		button:disabled {
-			background-color: #94a3b8;
-			cursor: not-allowed;
-		}
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
 
-		#result {
-			margin-top: 25px;
-		}
+        #result {
+            margin-top: 25px;
+        }
 
-		.prediction {
-			font-size: 48px;
-			font-weight: bold;
-			color: #16a34a;
-		}
+        .prediction {
+            font-size: 48px;
+            font-weight: bold;
+            color: #16a34a;
+        }
 
-		.confidence {
-			margin-top: 10px;
-			color: #555;
-			font-size: 16px;
-		}
+        .confidence {
+            margin-top: 10px;
+            color: #555;
+            font-size: 16px;
+        }
 
-		.error {
-			color: #dc2626;
-			font-weight: bold;
-		}
+        .error {
+            color: #dc2626;
+            font-weight: bold;
+        }
 
-		.loading {
-			color: #2563eb;
-			font-weight: bold;
-		}
-	</style>
+        .loading {
+            color: #2563eb;
+            font-weight: bold;
+        }
+    </style>
 </head>
+
 
 <body>
 
-	<div class="container">
-		<h1>Digit Recognizer</h1>
-		<p>Upload an image containing a single handwritten digit (0-9).</p>
+<div class="container">
 
-		<input type="file" id="imageInput" accept="image/*">
-		<br>
+    <h1>Digit Recognizer</h1>
 
-		<img id="preview" alt="Image Preview">
+    <p>
+        Upload an image containing a single handwritten digit (0-9).
+    </p>
 
-		<br>
+    <input type="file" id="imageInput" accept="image/*">
 
-		<button id="predictBtn" onclick="uploadImage()">Predict Digit</button>
+    <br>
 
-		<div id="result"></div>
-	</div>
+    <img id="preview" alt="Image Preview">
 
-	<script>
-		const imageInput = document.getElementById('imageInput');
-		const preview = document.getElementById('preview');
-		const resultDiv = document.getElementById('result');
-		const predictBtn = document.getElementById('predictBtn');
+    <br>
 
-		imageInput.addEventListener('change', () => {
-			const file = imageInput.files[0];
+    <button id="predictBtn" onclick="uploadImage()">
+        Predict Digit
+    </button>
 
-			if (file) {
-				preview.src = URL.createObjectURL(file);
-				preview.style.display = 'block';
-				resultDiv.innerHTML = '';
-			} else {
-				preview.style.display = 'none';
-			}
-		});
 
-		async function uploadImage() {
-			if (imageInput.files.length === 0) {
-				resultDiv.innerHTML = "<div class='error'>Please select an image first.</div>";
-				return;
-			}
+    <div id="result"></div>
 
-			predictBtn.disabled = true;
-			resultDiv.innerHTML = "<div class='loading'>Analyzing image...</div>";
+</div>
 
-			const formData = new FormData();
-			formData.append('file', imageInput.files[0]);
 
-			try {
-				const response = await fetch('/predict', {
-					method: 'POST',
-					body: formData
-				});
+<script>
 
-				const data = await response.json();
+const imageInput = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const resultDiv = document.getElementById("result");
+const predictBtn = document.getElementById("predictBtn");
 
-				if (data.error) {
-					resultDiv.innerHTML = `<div class='error'>${data.error}</div>`;
-				} else {
-					resultDiv.innerHTML = `
-                    <div>Predicted Digit</div>
-                    <div class="prediction">${data.digit}</div>
-                    <div class="confidence">Confidence: ${data.confidence}</div>
-                `;
-				}
-			} catch (error) {
-				resultDiv.innerHTML = "<div class='error'>Could not connect to the Flask server.</div>";
-			} finally {
-				predictBtn.disabled = false;
-			}
-		}
-	</script>
+
+// Show image preview
+imageInput.addEventListener("change", function () {
+
+    const file = imageInput.files[0];
+
+    if (file) {
+
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+
+        resultDiv.innerHTML = "";
+    }
+
+});
+
+
+
+// Send image to Flask
+async function uploadImage() {
+
+
+    if (imageInput.files.length === 0) {
+
+        resultDiv.innerHTML =
+            "<div class='error'>Please select an image first.</div>";
+
+        return;
+    }
+
+
+    predictBtn.disabled = true;
+
+    resultDiv.innerHTML =
+        "<div class='loading'>Analyzing image... Please wait.</div>";
+
+
+
+    const formData = new FormData();
+
+    formData.append(
+        "file",
+        imageInput.files[0]
+    );
+
+
+
+    try {
+
+
+        const response = await fetch("/predict", {
+
+            method: "POST",
+
+            body: formData
+
+        });
+
+
+
+        const data = await response.json();
+
+
+
+        if (!response.ok) {
+
+
+            resultDiv.innerHTML = `
+
+                <div class="error">
+
+                    Server Error:
+                    ${data.error}
+
+                </div>
+
+            `;
+
+            return;
+
+        }
+
+
+
+        resultDiv.innerHTML = `
+
+            <div>
+                Predicted Digit
+            </div>
+
+
+            <div class="prediction">
+
+                ${data.digit}
+
+            </div>
+
+
+            <div class="confidence">
+
+                Confidence:
+                ${data.confidence}
+
+            </div>
+
+        `;
+
+
+
+    }
+
+    catch(error) {
+
+
+        resultDiv.innerHTML = `
+
+            <div class="error">
+
+                Connection Error:
+                ${error.message}
+
+            </div>
+
+        `;
+
+
+    }
+
+    finally {
+
+        predictBtn.disabled = false;
+
+    }
+
+
+}
+
+
+</script>
+
 
 </body>
 
