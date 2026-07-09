@@ -1,97 +1,216 @@
 import os
+
+# Disable GPU (important for free cloud hosting)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import tensorflow as tf
+
+# Reduce TensorFlow memory usage
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+
 import numpy as np
-import tensorflow as tf
 from flask import Flask, request, render_template, jsonify
 from PIL import Image, ImageOps
 
+
 app = Flask(__name__)
 
-# Load the trained model
 MODEL_PATH = "digit_model.keras"
 
-if os.path.exists(MODEL_PATH):
-    model = tf.keras.models.load_model(MODEL_PATH)
-else:
-    raise FileNotFoundError("Please run train.py first!")
+# Model will be loaded only when needed
+model = None
 
-@app.route('/')
+
+def load_model():
+    global model
+
+    if model is None:
+
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(
+                "Model file digit_model.keras was not found!"
+            )
+
+        print("Loading TensorFlow model...")
+        model = tf.keras.models.load_model(MODEL_PATH)
+        print("Model loaded successfully!")
+
+    return model
+
+
+
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/predict', methods=['POST'])
+
+
+@app.route("/predict", methods=["POST"])
 def predict():
 
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+    if "file" not in request.files:
+        return jsonify({
+            "error": "No image uploaded"
+        }), 400
 
-    file = request.files['file']
+
+    file = request.files["file"]
+
 
     try:
-        # Open image and convert to grayscale
-        img = Image.open(file.stream).convert('L')
 
-        # Convert to numpy array
+        # -----------------------------
+        # Load image
+        # -----------------------------
+
+        img = Image.open(file.stream).convert("L")
+
         img_array = np.array(img)
 
-        # If background is white, invert colors
+
+        # -----------------------------
+        # Convert background
+        # MNIST uses white digit on black background
+        # -----------------------------
+
         if np.mean(img_array) > 127:
             img = ImageOps.invert(img)
 
-        # Convert back to array
+
         img_array = np.array(img)
 
-        # Simple threshold to remove noise
-        img_array = (img_array > 50).astype(np.uint8) * 255
 
-        # Crop the digit area
+        # -----------------------------
+        # Remove noise
+        # -----------------------------
+
+        img_array = (
+            (img_array > 50)
+            .astype(np.uint8)
+            * 255
+        )
+
+
+        # -----------------------------
+        # Crop digit
+        # -----------------------------
+
         coords = np.argwhere(img_array > 0)
 
+
         if coords.size > 0:
+
             y0, x0 = coords.min(axis=0)
             y1, x1 = coords.max(axis=0) + 1
+
             img_array = img_array[y0:y1, x0:x1]
 
-        # Convert back to PIL image
+
+
+        # -----------------------------
+        # Resize while keeping ratio
+        # -----------------------------
+
         img = Image.fromarray(img_array)
 
-        # Resize while keeping aspect ratio
         img.thumbnail((20, 20))
 
-        # Create a 28x28 black canvas
-        canvas = Image.new('L', (28, 28), 0)
 
-        # Center the digit
+        # Create MNIST style canvas
+        canvas = Image.new(
+            "L",
+            (28, 28),
+            0
+        )
+
+
         x = (28 - img.width) // 2
         y = (28 - img.height) // 2
-        canvas.paste(img, (x, y))
 
+
+        canvas.paste(
+            img,
+            (x, y)
+        )
+
+
+        # -----------------------------
         # Normalize
-        img_array = np.array(canvas).astype('float32') / 255.0
+        # -----------------------------
+
+        img_array = (
+            np.array(canvas)
+            .astype("float32")
+            / 255.0
+        )
+
 
         # Add batch dimension
-        img_array = np.expand_dims(img_array, axis=0)
+        img_array = np.expand_dims(
+            img_array,
+            axis=0
+        )
 
-        # Predict
-        predictions = model.predict(img_array, verbose=0)
 
-        digit = int(np.argmax(predictions[0]))
-        confidence = float(np.max(predictions[0]) * 100)
+        # -----------------------------
+        # Prediction
+        # -----------------------------
+
+        trained_model = load_model()
+
+
+        predictions = trained_model.predict(
+            img_array,
+            verbose=0
+        )
+
+
+        digit = int(
+            np.argmax(predictions[0])
+        )
+
+
+        confidence = float(
+            np.max(predictions[0]) * 100
+        )
+
 
         return jsonify({
-            'digit': digit,
-            'confidence': f'{confidence:.2f}%'
+
+            "digit": digit,
+
+            "confidence":
+                f"{confidence:.2f}%"
+
         })
 
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
+        print("ERROR:", e)
+
+        return jsonify({
+
+            "error": str(e)
+
+        }), 500
 
 
-if __name__ == '__main__':
-    # Cloud platforms pass the port via an environment variable
-    port = int(os.environ.get("PORT", 5000))
-    
-    # host="0.0.0.0" allows the app to accept external requests
-    # debug should be False in production environments
-    app.run(host="0.0.0.0", port=port, debug=False)
+
+
+if __name__ == "__main__":
+
+    port = int(
+        os.environ.get(
+            "PORT",
+            5000
+        )
+    )
+
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False
+    )
